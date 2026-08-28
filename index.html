@@ -184,14 +184,21 @@ button:active{transform:scale(.97);}
   margin-bottom:12px;
 }
 .pixel-grid{
-  display:grid;
-  gap:2px;
+  display:block;
+  image-rendering:pixelated;
+}
+.pixel-frame .pixel-grid{
   background:#050810;
   padding:8px;
   border-radius:8px;
   border:1px solid var(--line);
 }
-.pixel-cell{width:11px;height:11px;border-radius:1px;background:transparent;}
+.mini-pixel .pixel-grid{
+  background:#050810;
+  padding:4px;
+  border-radius:6px;
+  border:1px solid var(--line);
+}
 
 .stat-row{display:flex;align-items:center;gap:8px;font-size:10px;margin-bottom:6px;}
 .stat-label{width:32px;color:var(--muted);}
@@ -219,7 +226,6 @@ button:active{transform:scale(.97);}
 .mini-card .name{font-size:11px;font-weight:700;margin-bottom:4px;}
 .mini-card .elem{font-size:9px;color:var(--muted);margin-bottom:6px;}
 .mini-pixel{display:flex;justify-content:center;margin-bottom:6px;}
-.mini-cell{width:5px;height:5px;}
 .mini-rarity{font-size:8px;color:var(--rc,var(--muted));letter-spacing:1px;}
 .empty{color:var(--muted);font-size:11px;text-align:center;padding:30px 10px;line-height:1.8;}
 .collection-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
@@ -591,7 +597,7 @@ select{
       <div class="fighter left" id="fighterL">
         <div class="fx-zone" id="fxL"></div>
         <div class="sprite-wrap" id="spriteL">
-          <div class="pixel-grid" id="pgL"></div>
+          <canvas class="pixel-grid" id="pgL"></canvas>
           <div class="result-label" id="resultL"></div>
         </div>
         <div class="info-zone">
@@ -602,7 +608,7 @@ select{
       <div class="fighter right" id="fighterR">
         <div class="fx-zone" id="fxR"></div>
         <div class="sprite-wrap" id="spriteR">
-          <div class="pixel-grid" id="pgR"></div>
+          <canvas class="pixel-grid" id="pgR"></canvas>
           <div class="result-label" id="resultR"></div>
         </div>
         <div class="info-zone">
@@ -757,7 +763,7 @@ function compositeFromIndices(idx, color){
     const rowColor = shadeColor(color, shade);
     for(let y=0;y<TILE_SIZE;y++){
       const cells = tiles[0][y].concat(tiles[1][y], tiles[2][y]);
-      grid.push({ cells, color: rowColor });
+      grid.push(cells.map(on => on ? rowColor : null));
     }
   });
   return { grid, parts: { top: `${idx.topC}-${idx.topS}`, mid: `${idx.midC}-${idx.midS}`, bot: `${idx.botC}-${idx.botS}` } };
@@ -765,6 +771,42 @@ function compositeFromIndices(idx, color){
 
 function buildCreatureGrid(barcode, color){
   return compositeFromIndices(pickPartIndices(barcode), color);
+}
+
+/* ---------- 実素材(32px×3×3)からの合成 ----------
+   ドット制作アプリ側の「全パーツドットデータ(JSON)」は
+   { head, body, legs, top_side, mid_side, bot_side } の6キーで、
+   それぞれ32×32のマス目(色コード文字列 or null)。
+   head/body/legs は中央列、*_side は右側列に使い、左側列は反転して使う。
+*/
+const EMPTY_TILE_32 = Array.from({length:32}, ()=> Array(32).fill(null));
+
+function normalizeTile32(tile){
+  if(Array.isArray(tile) && tile.length === 32 && Array.isArray(tile[0])) return tile;
+  return EMPTY_TILE_32;
+}
+
+function buildColorGridFromDotData(dotData){
+  const d = dotData || {};
+  const headC = normalizeTile32(d.head);
+  const bodyC = normalizeTile32(d.body);
+  const legsC = normalizeTile32(d.legs);
+  const topR = normalizeTile32(d.top_side), topL = mirrorTileH(topR);
+  const midR = normalizeTile32(d.mid_side), midL = mirrorTileH(midR);
+  const botR = normalizeTile32(d.bot_side), botL = mirrorTileH(botR);
+
+  const rowsDef = [
+    [topL, headC, topR],
+    [midL, bodyC, midR],
+    [botL, legsC, botR],
+  ];
+  const grid = [];
+  rowsDef.forEach(tiles=>{
+    for(let y=0;y<32;y++){
+      grid.push(tiles[0][y].concat(tiles[1][y], tiles[2][y]));
+    }
+  });
+  return grid;
 }
 
 function coreStatsFromBarcode(barcode){
@@ -795,34 +837,28 @@ function generateRandomMixMonster(barcode){
   };
 }
 
-/* 作成者確定モード：スプレッドシート(GAS経由)に登録された固定パーツで組み立てる。
+/* 作成者確定モード：スプレッドシート(GAS経由)に登録された実際のドット絵(32px×3×3)で組み立てる。
    ステータス/名前/属性はこれまで通りバーコードのハッシュから決定し、
-   パーツ(見た目)だけをGASから取得した行で上書きする。 */
+   見た目(パーツ)だけをGASから取得した実データで上書きする。 */
 
 // ⚠ ここを実際に公開したGASウェブアプリのURL(/exec で終わるもの)に差し替えてください
-const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbxoGMItKno3hxKuop9hW7RUpcejHD6sun-vm0EXxsfM3QjosUuyw0aqZ6rIWAQLrrbc5A/exec";
+const GAS_ENDPOINT_URL = "YOUR_GAS_WEBAPP_URL_HERE";
 
 function buildMonsterFromOriginalRow(barcode, row){
   const core = coreStatsFromBarcode(barcode);
-  const idx = {
-    topC: clampPartIndex("topC", row.topC), topS: clampPartIndex("topS", row.topS),
-    midC: clampPartIndex("midC", row.midC), midS: clampPartIndex("midS", row.midS),
-    botC: clampPartIndex("botC", row.botC), botS: clampPartIndex("botS", row.botS),
-  };
-  const { grid, parts } = compositeFromIndices(idx, core.element.color);
+  let dotData = row.dotData ?? row["全パーツドットデータ(JSON)"] ?? row.dot_data;
+  if(typeof dotData === "string"){
+    try{ dotData = JSON.parse(dotData); }catch(e){ dotData = null; }
+  }
+  const grid = buildColorGridFromDotData(dotData);
   return {
     id: barcode,
-    barcode, name: row.name || core.name, element: core.element.name, color: core.element.color,
+    barcode, name: row.name || row["作品名"] || core.name,
+    element: core.element.name, color: core.element.color,
     hp: core.hp, atk: core.atk, def: core.def, spd: core.spd, total: core.total,
     rarityKey: core.rarity.key, rarityLabel: core.rarity.label, rarityColor: core.rarity.color,
-    grid, parts, capturedAt: Date.now(), original: true
+    grid, parts: null, capturedAt: Date.now(), original: true
   };
-}
-
-function clampPartIndex(role, value){
-  const lib = TILE_LIBRARY[role];
-  const n = Number(value);
-  return (Number.isInteger(n) && n >= 0 && n < lib.length) ? n : 0;
 }
 
 async function loadOriginalMonster(barcode){
@@ -874,18 +910,35 @@ async function saveCollection(list){
 let collection = [];
 
 /* ---------- render helpers ---------- */
-function renderPixelGrid(container, grid, cellSize){
-  container.innerHTML = "";
-  container.style.gridTemplateColumns = `repeat(${grid[0].cells.length}, ${cellSize}px)`;
-  grid.forEach(row => row.cells.forEach(on => {
-    const c = document.createElement("div");
-    c.className = cellSize > 8 ? "pixel-cell" : "mini-cell";
-    c.style.width = cellSize+"px";
-    c.style.height = cellSize+"px";
-    if(on) c.style.background = row.color;
-    container.appendChild(c);
-  }));
+// grid: 配列(行) × 配列(列) の色コード文字列 or null。
+// targetWidth: 表示したい全体の横幅(px)。解像度(24マス/96マスなど)に関わらず見た目のサイズを揃える。
+function renderColorGrid(canvas, grid, targetWidth){
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const cellSize = targetWidth / cols;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(cols * cellSize * dpr);
+  canvas.height = Math.round(rows * cellSize * dpr);
+  canvas.style.width = (cols * cellSize) + "px";
+  canvas.style.height = (rows * cellSize) + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cols*cellSize, rows*cellSize);
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+      const c = grid[y][x];
+      if(c){
+        ctx.fillStyle = c;
+        ctx.fillRect(x*cellSize, y*cellSize, cellSize+0.6, cellSize+0.6);
+      }
+    }
+  }
+  canvas._cgMeta = { grid, cellSize };
 }
+
+const CARD_TARGET_W = 168;
+const MINI_TARGET_W = 64;
+const ARENA_TARGET_W = 120;
 
 function renderCard(m){
   const stage = document.getElementById("cardStage");
@@ -902,8 +955,8 @@ function renderCard(m){
       </div>
       <div class="rarity-badge">${m.rarityLabel}</div>
     </div>
-    <div class="pixel-frame"><div class="pixel-grid" id="pg-${m.id}"></div></div>
-    <div class="parts-line">${m.original ? "✅ 作成者確定 ・ " : ""}PARTS T${m.parts.top} ・ M${m.parts.mid} ・ B${m.parts.bot}</div>
+    <div class="pixel-frame"><canvas class="pixel-grid" id="pg-${m.id}"></canvas></div>
+    <div class="parts-line">${m.original ? "✅ 作成者確定モンスター" : `PARTS T${m.parts.top} ・ M${m.parts.mid} ・ B${m.parts.bot}`}</div>
     <div class="stats"></div>
     <div class="card-footer">
       <span>${m.barcode}</span>
@@ -911,7 +964,7 @@ function renderCard(m){
     </div>
   `;
   stage.appendChild(card);
-  renderPixelGrid(card.querySelector(`#pg-${m.id}`), m.grid, 2);
+  renderColorGrid(card.querySelector(`#pg-${m.id}`), m.grid, CARD_TARGET_W);
 
   const statsEl = card.querySelector(".stats");
   [["HP",m.hp,"#4CD97B"],["攻撃",m.atk,"#FF5A3C"],["防御",m.def,"#3CA7FF"],["素早",m.spd,"#FFD93C"]]
@@ -942,13 +995,13 @@ async function renderCollection(){
     el.className = "mini-card";
     el.style.setProperty("--rc", m.rarityColor);
     el.innerHTML = `
-      <div class="mini-pixel"><div class="pixel-grid" id="mg-${m.id}" style="padding:4px;"></div></div>
+      <div class="mini-pixel"><canvas class="pixel-grid" id="mg-${m.id}"></canvas></div>
       <div class="name">${m.name}</div>
       <div class="elem">${m.element} ・ PWR ${m.total}</div>
       <div class="mini-rarity">${m.rarityLabel}</div>
     `;
     grid.appendChild(el);
-    renderPixelGrid(el.querySelector(`#mg-${m.id}`), m.grid, 0.75);
+    renderColorGrid(el.querySelector(`#mg-${m.id}`), m.grid, MINI_TARGET_W);
     el.addEventListener("click", ()=>{
       switchTab("scan");
       renderCard(m);
@@ -970,7 +1023,7 @@ function renderArenaFighter(side, monster){
   document.getElementById("fname"+side).textContent = monster.name;
   document.getElementById("hpFill"+side).style.background = monster.color;
   document.getElementById("hpFill"+side).style.width = "100%";
-  renderPixelGrid(document.getElementById("pg"+side), monster.grid, 2);
+  renderColorGrid(document.getElementById("pg"+side), monster.grid, ARENA_TARGET_W);
 }
 
 function spawnMissPop(side){
@@ -1058,20 +1111,34 @@ function spawnStatusPop(side, label, amount){
 const STATUS_COLORS = { "やけど":"#FF5A3C", "毒":"#4CD97B", "怪我":"#FF3D81", "流血":"#FF3D81" };
 
 function fadeOutLoser(side, monster){
-  const container = document.getElementById("pg"+side);
-  if(!container || !monster) return;
-  const totalRows = monster.grid.length;
-  const rowWidth = monster.grid[0].cells.length;
-  Array.from(container.children).forEach((cell, idx)=>{
-    const rowIndex = Math.floor(idx / rowWidth);
-    const delay = (totalRows - 1 - rowIndex) * 35;
-    cell.style.transition = `opacity .5s ease ${delay}ms`;
-  });
-  requestAnimationFrame(()=>{
-    requestAnimationFrame(()=>{
-      Array.from(container.children).forEach(cell=>{ cell.style.opacity = "0"; });
-    });
-  });
+  const canvas = document.getElementById("pg"+side);
+  if(!canvas || !monster || !canvas._cgMeta) return;
+  const { grid, cellSize } = canvas._cgMeta;
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+
+  const draw = (visibleRows)=>{
+    ctx.clearRect(0, 0, cols*cellSize, rows*cellSize);
+    for(let y=0; y<visibleRows; y++){
+      for(let x=0; x<cols; x++){
+        const c = grid[y][x];
+        if(c){
+          ctx.fillStyle = c;
+          ctx.fillRect(x*cellSize, y*cellSize, cellSize+0.6, cellSize+0.6);
+        }
+      }
+    }
+  };
+
+  let visibleRows = rows;
+  const timer = setInterval(()=>{
+    visibleRows--;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw(Math.max(0, visibleRows));
+    if(visibleRows <= 0) clearInterval(timer);
+  }, Math.max(12, Math.floor(500/rows)));
 }
 
 const TECH_SUFFIX = ["ブレイク","バースト","ストライク","インパクト","フレア","クラッシュ","タイフーン","ボルテックス","メテオ","レイジ"];

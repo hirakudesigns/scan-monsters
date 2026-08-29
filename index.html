@@ -842,7 +842,7 @@ function generateRandomMixMonster(barcode){
    見た目(パーツ)だけをGASから取得した実データで上書きする。 */
 
 // ⚠ ここを実際に公開したGASウェブアプリのURL(/exec で終わるもの)に差し替えてください
-const GAS_ENDPOINT_URL = "YOUR_GAS_WEBAPP_URL_HERE";
+const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbxoGMItKno3hxKuop9hW7RUpcejHD6sun-vm0EXxsfM3QjosUuyw0aqZ6rIWAQLrrbc5A/exec";
 
 function buildMonsterFromOriginalRow(barcode, row){
   const core = coreStatsFromBarcode(barcode);

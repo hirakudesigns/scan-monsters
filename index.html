@@ -883,18 +883,33 @@ async function spawnMonsterFromBarcode(inputBarcode){
   return generateRandomMixMonster(inputBarcode);
 }
 
-/* ---------- storage ---------- */
+/* ---------- storage ----------
+   Claudeのアーティファクト内では window.storage が使えるが、
+   GitHub Pagesなど通常のWebサイトとして動かす場合はそれが存在しないため、
+   その場合はブラウザ標準の localStorage にフォールバックする。
+*/
 const STORE_KEY = "monsters";
 let storageWarned = false;
+function hasArtifactStorage(){
+  return typeof window.storage !== "undefined" && window.storage !== null;
+}
 async function loadCollection(){
   try{
-    const res = await window.storage.get(STORE_KEY, false);
-    return res && res.value ? JSON.parse(res.value) : [];
+    if(hasArtifactStorage()){
+      const res = await window.storage.get(STORE_KEY, false);
+      return res && res.value ? JSON.parse(res.value) : [];
+    }
+    const raw = localStorage.getItem(STORE_KEY);
+    return raw ? JSON.parse(raw) : [];
   }catch(e){ return []; }
 }
 async function saveCollection(list){
   try{
-    await window.storage.set(STORE_KEY, JSON.stringify(list), false);
+    if(hasArtifactStorage()){
+      await window.storage.set(STORE_KEY, JSON.stringify(list), false);
+    } else {
+      localStorage.setItem(STORE_KEY, JSON.stringify(list));
+    }
   }catch(e){
     if(!storageWarned){
       storageWarned = true;

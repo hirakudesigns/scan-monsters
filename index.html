@@ -143,7 +143,7 @@ button:active{transform:scale(.97);}
   padding:16px;
   position:relative;
   overflow:hidden;
-  border:2px solid var(--rc,var(--line));
+  border:6px solid var(--rc,var(--line));
   background:linear-gradient(160deg, var(--panel2), #0c1122 70%);
   animation:reveal .5s cubic-bezier(.2,.9,.3,1.2);
   box-shadow:0 0 0 rgba(0,0,0,0);
@@ -162,8 +162,25 @@ button:active{transform:scale(.97);}
   100%{box-shadow:0 0 16px #ff5a3c55;}
 }
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
-.card-name{font-size:15px;font-weight:700;letter-spacing:.5px;}
-.card-elem{font-size:10px;color:var(--muted);margin-top:2px;}
+.elem-badge{
+  width:48px;height:48px;
+  border-radius:50%;
+  background:var(--ec);
+  border:2px solid rgba(0,0,0,0.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+  font-weight:700;
+  color:#0B0F1A;
+  box-shadow:0 0 12px var(--ec);
+  flex-shrink:0;
+}
+.card-name-big{
+  font-size:19px;
+  font-weight:700;
+  letter-spacing:.5px;
+  text-align:center;
+  margin:6px 0 10px;
+}
 .rarity-badge{
   font-size:10px;
   font-weight:700;
@@ -172,9 +189,25 @@ button:active{transform:scale(.97);}
   border:1px solid var(--rc,var(--line));
   color:var(--rc,var(--text));
   white-space:nowrap;
+  height:fit-content;
 }
 .pixel-frame{
   display:flex;justify-content:center;margin:10px 0 8px;
+}
+.card-power{
+  text-align:center;
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:2px;
+  margin:10px 0 4px;
+}
+.power-val{
+  display:block;
+  font-family:'Press Start 2P',monospace;
+  font-size:22px;
+  color:var(--amber);
+  text-shadow:0 0 12px rgba(255,194,71,0.6);
+  margin-top:4px;
 }
 .parts-line{
   text-align:center;
@@ -203,14 +236,14 @@ button:active{transform:scale(.97);}
 .stat-row{display:flex;align-items:center;gap:8px;font-size:10px;margin-bottom:6px;}
 .stat-label{width:32px;color:var(--muted);}
 .stat-bar{flex:1;height:7px;background:#050810;border-radius:4px;overflow:hidden;}
-.stat-fill{height:100%;border-radius:4px;transition:width .5s ease;}
+.stat-fill{height:100%;border-radius:4px;transition:width .5s ease;box-shadow:0 0 6px 0 currentColor;}
 .stat-val{width:24px;text-align:right;color:var(--text);}
 
 .card-footer{
-  margin-top:12px;
+  margin-top:14px;
   padding-top:10px;
   border-top:1px dashed var(--line);
-  display:flex;justify-content:space-between;align-items:center;
+  display:flex;justify-content:center;align-items:center;
   font-size:10px;color:var(--muted);letter-spacing:1px;
 }
 
@@ -222,14 +255,44 @@ button:active{transform:scale(.97);}
   border-radius:10px;
   padding:10px;
   cursor:pointer;
+  position:relative;
+}
+.mini-card.ss{
+  border-image:linear-gradient(120deg,#ff5a3c,#ffd93c,#4cd97b,#3ca7ff,#9b5cff,#ff6fd8) 1;
 }
 .mini-card .name{font-size:11px;font-weight:700;margin-bottom:4px;}
 .mini-card .elem{font-size:9px;color:var(--muted);margin-bottom:6px;}
 .mini-pixel{display:flex;justify-content:center;margin-bottom:6px;}
 .mini-rarity{font-size:8px;color:var(--rc,var(--muted));letter-spacing:1px;}
+.mini-delete{
+  position:absolute;
+  top:4px;right:4px;
+  width:18px;height:18px;
+  border-radius:50%;
+  background:rgba(5,8,16,0.8);
+  border:1px solid var(--line);
+  color:var(--muted);
+  font-size:11px;
+  line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  z-index:2;
+}
+.mini-delete:hover{color:var(--magenta);border-color:var(--magenta);}
 .empty{color:var(--muted);font-size:11px;text-align:center;padding:30px 10px;line-height:1.8;}
 .collection-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
 .collection-head .count{font-size:11px;color:var(--green);}
+.filter-row{display:flex;gap:8px;margin-bottom:12px;}
+.filter-row select{
+  flex:1;
+  background:#050810;
+  border:1px solid var(--line);
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;
+  padding:8px;
+  border-radius:6px;
+}
 
 /* battle */
 select{
@@ -579,6 +642,10 @@ select{
       <span>捕獲図鑑</span>
       <span class="count" id="collCount">0 匹</span>
     </div>
+    <div class="filter-row">
+      <select id="filterElement"><option value="all">属性: すべて</option></select>
+      <select id="filterRarity"><option value="all">レア度: すべて</option></select>
+    </div>
     <div id="collectionGrid"></div>
   </div>
 
@@ -748,29 +815,14 @@ function pickPartIndices(barcode){
   };
 }
 
-function compositeFromIndices(idx, color){
-  const topR = TILE_LIBRARY.topS[idx.topS], topL = mirrorTileH(topR), topC = TILE_LIBRARY.topC[idx.topC];
-  const midR = TILE_LIBRARY.midS[idx.midS], midL = mirrorTileH(midR), midC = TILE_LIBRARY.midC[idx.midC];
-  const botR = TILE_LIBRARY.botS[idx.botS], botL = mirrorTileH(botR), botC = TILE_LIBRARY.botC[idx.botC];
+const SLOT_NAMES = ["topC","topS","midC","midS","botC","botS"];
 
-  const rowsDef = [
-    { tiles:[topL,topC,topR], shade: 0.18 },
-    { tiles:[midL,midC,midR], shade: 0 },
-    { tiles:[botL,botC,botR], shade: -0.18 },
-  ];
-  const grid = [];
-  rowsDef.forEach(({tiles, shade})=>{
-    const rowColor = shadeColor(color, shade);
-    for(let y=0;y<TILE_SIZE;y++){
-      const cells = tiles[0][y].concat(tiles[1][y], tiles[2][y]);
-      grid.push(cells.map(on => on ? rowColor : null));
-    }
-  });
-  return { grid, parts: { top: `${idx.topC}-${idx.topS}`, mid: `${idx.midC}-${idx.midS}`, bot: `${idx.botC}-${idx.botS}` } };
+function emptyColorTile(size){
+  return Array.from({length:size}, ()=> Array(size).fill(null));
 }
 
-function buildCreatureGrid(barcode, color){
-  return compositeFromIndices(pickPartIndices(barcode), color);
+function boolTileToColor(boolTile, color){
+  return boolTile.map(row => row.map(on => on ? color : null));
 }
 
 /* ---------- 実素材(32px×3×3)からの合成 ----------
@@ -779,7 +831,7 @@ function buildCreatureGrid(barcode, color){
    それぞれ32×32のマス目(色コード文字列 or null)。
    head/body/legs は中央列、*_side は右側列に使い、左側列は反転して使う。
 */
-const EMPTY_TILE_32 = Array.from({length:32}, ()=> Array(32).fill(null));
+const EMPTY_TILE_32 = emptyColorTile(32);
 
 function normalizeTile32(tile){
   if(Array.isArray(tile) && tile.length === 32 && Array.isArray(tile[0])) return tile;
@@ -809,6 +861,122 @@ function buildColorGridFromDotData(dotData){
   return grid;
 }
 
+/* ---------- 実パーツプール(ワークショップ蓄積データ)のキャッシュ ----------
+   GASの ?all=1 から、登録されている全作品のドットデータをまとめて取得し、
+   スロットごと(head/body/legs/top_side/mid_side/bot_side)のプールに分けて貯めておく。
+   取得できなければ null のままとし、その場合は手続き生成のプレースホルダーにフォールバックする。
+*/
+const SLOT_TO_KEY = { topC:"head", midC:"body", botC:"legs", topS:"top_side", midS:"mid_side", botS:"bot_side" };
+let partPool = null;
+let partPoolLoading = null;
+
+async function loadPartPool(){
+  if(partPoolLoading) return partPoolLoading;
+  partPoolLoading = (async ()=>{
+    try{
+      if(GAS_ENDPOINT_URL === "YOUR_GAS_WEBAPP_URL_HERE") throw new Error("GAS_ENDPOINT_URL 未設定");
+      const res = await fetch(GAS_ENDPOINT_URL + "?all=1");
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data.items || []);
+      const pool = { topC:[], topS:[], midC:[], midS:[], botC:[], botS:[] };
+      items.forEach(item=>{
+        let dd = item.dotData ?? item["全パーツドットデータ(JSON)"] ?? item.dot_data;
+        if(typeof dd === "string"){ try{ dd = JSON.parse(dd); }catch(e){ dd = null; } }
+        if(!dd) return;
+        SLOT_NAMES.forEach(slot=>{
+          const key = SLOT_TO_KEY[slot];
+          const tile = normalizeTile32(dd[key]);
+          if(tile !== EMPTY_TILE_32) pool[slot].push(tile);
+        });
+      });
+      const complete = SLOT_NAMES.every(slot => pool[slot].length > 0);
+      partPool = complete ? pool : null;
+    }catch(err){
+      console.warn("実パーツプールの読み込みに失敗、手続き生成にフォールバックします:", err);
+      partPool = null;
+    }
+    return partPool;
+  })();
+  return partPoolLoading;
+}
+
+function shadeColor(hex, percent){
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.max(0, (n >> 16) + Math.round(255*percent)));
+  const g = Math.min(255, Math.max(0, ((n >> 8) & 0xFF) + Math.round(255*percent)));
+  const b = Math.min(255, Math.max(0, (n & 0xFF) + Math.round(255*percent)));
+  return "#" + [r,g,b].map(v=>v.toString(16).padStart(2,"0")).join("");
+}
+
+/* ---------- パーツ充足度 × 色違いでレア度を決めるごちゃまぜ合成 ----------
+   30% 頭のみ or 頭+体(コモン) / 30% 頭+体+足・センターのみ(レア) /
+   30% サイドパーツまでフルセット(スーパーレア) / 10% それらの色違い(レジェンド・虹色)
+*/
+function pickMixTier(barcode){
+  const rng = mulberry32(hashCode(barcode + "_tier"));
+  const roll = rng();
+  const shiny = roll >= 0.90;
+  let tier = shiny ? "full" : (roll < 0.30 ? "sparse" : roll < 0.60 ? "core" : "full");
+  let sparseVariant = null;
+  if(tier === "sparse") sparseVariant = rng() < 0.5 ? "head" : "headbody";
+  return { tier, sparseVariant, shiny };
+}
+
+function slotsFilledForTier(tier, sparseVariant){
+  if(tier === "sparse"){
+    return sparseVariant === "head"
+      ? { topC:true }
+      : { topC:true, midC:true };
+  }
+  if(tier === "core") return { topC:true, midC:true, botC:true };
+  return { topC:true, topS:true, midC:true, midS:true, botC:true, botS:true }; // full
+}
+
+function buildMixCreatureGrid(barcode, elementColor){
+  const { tier, sparseVariant, shiny } = pickMixTier(barcode);
+  const filled = slotsFilledForTier(tier, sparseVariant);
+  const usingReal = !!partPool;
+  const tileSize = usingReal ? 32 : TILE_SIZE;
+
+  const tiles = {};
+  SLOT_NAMES.forEach(slot=>{
+    if(!filled[slot]){
+      tiles[slot] = emptyColorTile(tileSize);
+      return;
+    }
+    if(usingReal){
+      const pool = partPool[slot];
+      tiles[slot] = pool[hashCode(barcode+"_"+slot+"_pool") % pool.length];
+    } else {
+      const idx = pickTileVariant(slot, barcode);
+      const shade = slot.startsWith("top") ? 0.18 : slot.startsWith("bot") ? -0.18 : 0;
+      tiles[slot] = boolTileToColor(TILE_LIBRARY[slot][idx], shadeColor(elementColor, shade));
+    }
+  });
+
+  const topL = mirrorTileH(tiles.topS), midL = mirrorTileH(tiles.midS), botL = mirrorTileH(tiles.botS);
+  const rowsDef = [
+    [topL, tiles.topC, tiles.topS],
+    [midL, tiles.midC, tiles.midS],
+    [botL, tiles.botC, tiles.botS],
+  ];
+  const grid = [];
+  rowsDef.forEach(rowTiles=>{
+    for(let y=0;y<tileSize;y++){
+      grid.push(rowTiles[0][y].concat(rowTiles[1][y], rowTiles[2][y]));
+    }
+  });
+
+  const TIER_LABEL = { sparse: sparseVariant === "head" ? "ヘッドのみ" : "ヘッド+ボディ", core: "コア(頭・体・足)", full: "フルセット" };
+  const rarityBySlotTier = shiny ? RARITY[5] /* SS レジェンド */
+    : tier === "sparse" ? RARITY[0] /* D コモン */
+    : tier === "core" ? RARITY[2] /* B レア */
+    : RARITY[3]; /* A スーパーレア */
+
+  return { grid, tierLabel: TIER_LABEL[tier], shiny, usingReal, rarity: rarityBySlotTier };
+}
+
 function coreStatsFromBarcode(barcode){
   const rng = mulberry32(hashCode(barcode));
   const element = ELEMENTS[Math.floor(rng()*ELEMENTS.length)];
@@ -817,29 +985,29 @@ function coreStatsFromBarcode(barcode){
   const def = Math.floor(20 + rng()*70);
   const spd = Math.floor(20 + rng()*70);
   const total = hp+atk+def+spd;
-  const rarity = rarityFor(total);
   let name = "";
   for(let i=0;i<3;i++) name += SYL[Math.floor(rng()*SYL.length)];
   name += SUFFIX[Math.floor(rng()*SUFFIX.length)];
-  return { element, hp, atk, def, spd, total, rarity, name };
+  return { element, hp, atk, def, spd, total, name };
 }
 
-/* ごちゃまぜ合成モード：バーコードのハッシュからパーツ・ステータスを自動生成(これまでの方式) */
+/* ごちゃまぜ合成モード：バーコードのハッシュからパーツ・ステータス・レア度を自動生成 */
 function generateRandomMixMonster(barcode){
   const core = coreStatsFromBarcode(barcode);
-  const { grid, parts } = buildCreatureGrid(barcode, core.element.color);
+  const { grid, tierLabel, shiny, usingReal, rarity } = buildMixCreatureGrid(barcode, core.element.color);
   return {
     id: barcode,
     barcode, name: core.name, element: core.element.name, color: core.element.color,
     hp: core.hp, atk: core.atk, def: core.def, spd: core.spd, total: core.total,
-    rarityKey: core.rarity.key, rarityLabel: core.rarity.label, rarityColor: core.rarity.color,
-    grid, parts, capturedAt: Date.now(), original: false
+    rarityKey: rarity.key, rarityLabel: rarity.label, rarityColor: rarity.color,
+    grid, parts: { tierLabel, shiny, usingReal }, capturedAt: Date.now(), original: false
   };
 }
 
 /* 作成者確定モード：スプレッドシート(GAS経由)に登録された実際のドット絵(32px×3×3)で組み立てる。
    ステータス/名前/属性はこれまで通りバーコードのハッシュから決定し、
-   見た目(パーツ)だけをGASから取得した実データで上書きする。 */
+   見た目(パーツ)だけをGASから取得した実データで上書きする。
+   ここでも10%の確率で「色違い(レジェンド)」になる。 */
 
 // ⚠ ここを実際に公開したGASウェブアプリのURL(/exec で終わるもの)に差し替えてください
 const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbxRRcBH4YgdOrFg4-lzvdbMdAe9bghN_nY5hLndYJOqbuvSp0Frz9zCyYwETBCvOiE9zQ/exec";
@@ -851,13 +1019,16 @@ function buildMonsterFromOriginalRow(barcode, row){
     try{ dotData = JSON.parse(dotData); }catch(e){ dotData = null; }
   }
   const grid = buildColorGridFromDotData(dotData);
+  const shinyRng = mulberry32(hashCode(barcode + "_orig_shiny"));
+  const shiny = shinyRng() < 0.10;
+  const rarity = shiny ? RARITY[5] : rarityFor(core.total);
   return {
     id: barcode,
     barcode, name: row.name || row["作品名"] || core.name,
     element: core.element.name, color: core.element.color,
     hp: core.hp, atk: core.atk, def: core.def, spd: core.spd, total: core.total,
-    rarityKey: core.rarity.key, rarityLabel: core.rarity.label, rarityColor: core.rarity.color,
-    grid, parts: null, capturedAt: Date.now(), original: true
+    rarityKey: rarity.key, rarityLabel: rarity.label, rarityColor: rarity.color,
+    grid, parts: { tierLabel: "フルセット", shiny, usingReal: true }, capturedAt: Date.now(), original: true
   };
 }
 
@@ -873,14 +1044,6 @@ async function loadOriginalMonster(barcode){
     console.warn("作成者確定モードの読み込みに失敗、ごちゃまぜ合成にフォールバックします:", err);
     return generateRandomMixMonster(barcode);
   }
-}
-
-/* エントリーポイント：先頭6桁が "490000" なら作成者確定モード、それ以外はごちゃまぜ合成モード */
-async function spawnMonsterFromBarcode(inputBarcode){
-  if(inputBarcode.startsWith("490000")){
-    return await loadOriginalMonster(inputBarcode);
-  }
-  return generateRandomMixMonster(inputBarcode);
 }
 
 /* ---------- storage ----------
@@ -964,18 +1127,16 @@ function renderCard(m){
 
   card.innerHTML = `
     <div class="card-top">
-      <div>
-        <div class="card-name">${m.name}</div>
-        <div class="card-elem">属性: ${m.element}</div>
-      </div>
+      <div class="elem-badge" style="--ec:${m.color}">${m.element}</div>
       <div class="rarity-badge">${m.rarityLabel}</div>
     </div>
+    <div class="card-name-big">${m.name}</div>
     <div class="pixel-frame"><canvas class="pixel-grid" id="pg-${m.id}"></canvas></div>
-    <div class="parts-line">${m.original ? "✅ 作成者確定モンスター" : `PARTS T${m.parts.top} ・ M${m.parts.mid} ・ B${m.parts.bot}`}</div>
+    <div class="card-power">PWR<span class="power-val">${m.total}</span></div>
     <div class="stats"></div>
+    <div class="parts-line">${[m.original && "✅ 作成者確定", m.parts.usingReal && "実素材", m.parts.shiny && "✨色違い", m.parts.tierLabel].filter(Boolean).join(" ・ ")}</div>
     <div class="card-footer">
       <span>${m.barcode}</span>
-      <span>PWR ${m.total}</span>
     </div>
   `;
   stage.appendChild(card);
@@ -987,7 +1148,7 @@ function renderCard(m){
       const row = document.createElement("div");
       row.className = "stat-row";
       row.innerHTML = `<span class="stat-label">${label}</span>
-        <span class="stat-bar"><span class="stat-fill" style="width:0%;background:${color}"></span></span>
+        <span class="stat-bar"><span class="stat-fill" style="width:0%;background:${color};color:${color}"></span></span>
         <span class="stat-val">${val}</span>`;
       statsEl.appendChild(row);
       requestAnimationFrame(()=> {
@@ -996,20 +1157,62 @@ function renderCard(m){
     });
 }
 
+let collFilterElement = "all";
+let collFilterRarity = "all";
+
+function populateCollectionFilters(){
+  const elSel = document.getElementById("filterElement");
+  const raSel = document.getElementById("filterRarity");
+  if(elSel.dataset.built) { elSel.value = collFilterElement; raSel.value = collFilterRarity; return; }
+  ELEMENTS.forEach(e=>{
+    const opt = document.createElement("option");
+    opt.value = e.name; opt.textContent = "属性: " + e.name;
+    elSel.appendChild(opt);
+  });
+  RARITY.forEach(r=>{
+    const opt = document.createElement("option");
+    opt.value = r.key; opt.textContent = "レア度: " + r.label;
+    raSel.appendChild(opt);
+  });
+  elSel.dataset.built = "1";
+  elSel.addEventListener("change", ()=>{ collFilterElement = elSel.value; renderCollection(); });
+  raSel.addEventListener("change", ()=>{ collFilterRarity = raSel.value; renderCollection(); });
+}
+
+async function deleteFromCollection(id){
+  const m = collection.find(x=>x.id===id);
+  if(!m) return;
+  if(!confirm(`「${m.name}」を図鑑から削除しますか？`)) return;
+  collection = collection.filter(x=>x.id!==id);
+  await saveCollection(collection);
+  renderCollection();
+}
+
 async function renderCollection(){
+  populateCollectionFilters();
   const grid = document.getElementById("collectionGrid");
   document.getElementById("collCount").textContent = collection.length + " 匹";
   if(collection.length === 0){
     grid.innerHTML = `<div class="empty">まだ何もスキャンしていません。<br>「スキャン」タブからバーコードを読み込もう。</div>`;
     return;
   }
+  const filtered = collection.filter(m=>
+    (collFilterElement === "all" || m.element === collFilterElement) &&
+    (collFilterRarity === "all" || m.rarityKey === collFilterRarity)
+  );
+  if(filtered.length === 0){
+    grid.className = "";
+    grid.innerHTML = `<div class="empty">条件に合うモンスターがいません。</div>`;
+    return;
+  }
   grid.className = "grid";
   grid.innerHTML = "";
-  collection.slice().reverse().forEach(m=>{
+  filtered.slice().reverse().forEach(m=>{
     const el = document.createElement("div");
-    el.className = "mini-card";
+    el.className = "mini-card" + (m.rarityKey === "SS" ? " ss" : "");
     el.style.setProperty("--rc", m.rarityColor);
     el.innerHTML = `
+      <div class="mini-delete" title="削除">✕</div>
       <div class="mini-pixel"><canvas class="pixel-grid" id="mg-${m.id}"></canvas></div>
       <div class="name">${m.name}</div>
       <div class="elem">${m.element} ・ PWR ${m.total}</div>
@@ -1017,6 +1220,10 @@ async function renderCollection(){
     `;
     grid.appendChild(el);
     renderColorGrid(el.querySelector(`#mg-${m.id}`), m.grid, MINI_TARGET_W);
+    el.querySelector(".mini-delete").addEventListener("click", (ev)=>{
+      ev.stopPropagation();
+      deleteFromCollection(m.id);
+    });
     el.addEventListener("click", ()=>{
       switchTab("scan");
       renderCard(m);
@@ -1384,15 +1591,43 @@ async function doScan(rawValue){
   }
   msg.textContent = "";
   const existing = collection.find(m => m.barcode === digits);
-  const monster = existing || await spawnMonsterFromBarcode(digits);
-  if(!existing){
-    collection.push(monster);
-    await saveCollection(collection);
+  let monster;
+  let isNew = false;
+  let upgraded = false;
+
+  // 「490000」始まりで、まだ作成者確定データに更新されていない場合は毎回読み込みを試みる。
+  // 以前GAS未設定でごちゃまぜ合成として捕獲していた場合、ここで正しいデータに上書きされる。
+  if(digits.startsWith("490000") && (!existing || !existing.original)){
+    const fetched = await loadOriginalMonster(digits);
+    monster = fetched;
+    if(fetched.original){
+      const idx = collection.findIndex(m => m.barcode === digits);
+      if(idx >= 0){ collection[idx] = monster; upgraded = true; }
+      else { collection.push(monster); isNew = true; }
+      await saveCollection(collection);
+    } else if(!existing){
+      collection.push(monster);
+      isNew = true;
+      await saveCollection(collection);
+    }
+  } else {
+    monster = existing || generateRandomMixMonster(digits);
+    if(!existing){
+      collection.push(monster);
+      isNew = true;
+      await saveCollection(collection);
+    }
+  }
+
+  if(upgraded){
+    msg.textContent = `「${monster.name}」を作成者確定データに更新しました`;
+    msg.style.color = "var(--green)";
+  } else if(isNew){
     msg.textContent = storageWarned
       ? `「${monster.name}」を捕獲(このセッション内のみ保存)`
       : `新規捕獲！「${monster.name}」を図鑑に登録しました`;
     msg.style.color = storageWarned ? "var(--muted)" : "var(--green)";
-  }else{
+  } else {
     msg.textContent = `「${monster.name}」は捕獲済みです`;
     msg.style.color = "var(--muted)";
   }
@@ -1446,6 +1681,7 @@ document.getElementById("titleScreen").addEventListener("touchend", (e)=>{
 
 (async function init(){
   collection = await loadCollection();
+  loadPartPool(); // 非同期・裏で読み込み。失敗しても手続き生成にフォールバックするので待たない
 })();
 </script>
 </body>

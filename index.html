@@ -388,15 +388,29 @@ button:active{transform:scale(.97);}
 .mini-delete{
   position:absolute;
   top:4px;right:4px;
-  width:18px;height:18px;
+  width:26px;height:26px;
   border-radius:50%;
-  background:rgba(5,8,16,0.8);
+  background:rgba(5,8,16,0.85);
   border:1px solid var(--line);
   color:var(--muted);
-  font-size:11px;
+  font-size:14px;
   line-height:1;
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;
+  z-index:2;
+}
+.mini-elem-badge{
+  position:absolute;
+  top:4px;left:4px;
+  width:24px;height:24px;
+  border-radius:50%;
+  background:var(--ec);
+  border:1.5px solid rgba(0,0,0,0.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;
+  font-weight:700;
+  color:#0B0F1A;
+  box-shadow:0 0 6px var(--ec);
   z-index:2;
 }
 .mini-delete:hover{color:var(--magenta);border-color:var(--magenta);}
@@ -464,6 +478,23 @@ select{
   overflow:hidden;
 }
 .arena.shake{animation:arenaShake .55s;}
+.arena-watermark{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'Press Start 2P',monospace;
+  font-size:13px;
+  line-height:1.9;
+  color:var(--muted);
+  opacity:.16;
+  text-align:center;
+  letter-spacing:2px;
+  pointer-events:none;
+  user-select:none;
+  transform:rotate(-3deg);
+}
 @keyframes arenaShake{
   0%,100%{transform:translateX(0);}
   25%{transform:translateX(-4px);}
@@ -777,6 +808,7 @@ select{
     <button class="btn-primary" style="width:100%;margin-top:6px;" id="battleBtn">⚔ バトル開始</button>
 
     <div class="arena" id="arena">
+      <div class="arena-watermark">SCAN!<br>MONSTERS</div>
       <div class="floor"></div>
       <div class="arena-flash" id="arenaFlash"></div>
       <div class="fighter left" id="fighterL">
@@ -1013,12 +1045,17 @@ async function loadPartPool(){
     }catch(err){
       console.warn("実パーツプールの読み込みに失敗、手続き生成にフォールバックします:", err);
       partPool = null;
+    }finally{
+      // 完了したら次回呼び出しで必ず再取得できるようにリセットする
+      partPoolLoading = null;
     }
     return partPool;
   })();
   return partPoolLoading;
 }
 
+const PART_POOL_REFRESH_MS = 45000; // ワークショップ中に増えるパーツを拾うため定期的に再取得
+setInterval(()=>{ loadPartPool(); }, PART_POOL_REFRESH_MS);
 function shadeColor(hex, percent){
   const n = parseInt(hex.slice(1), 16);
   const r = Math.min(255, Math.max(0, (n >> 16) + Math.round(255*percent)));
@@ -1034,7 +1071,7 @@ function shadeColor(hex, percent){
 function pickMixTier(barcode){
   const rng = mulberry32(hashCode(barcode + "_tier"));
   const roll = rng();
-  const shiny = roll >= 0.90;
+  const shiny = roll >= 0.85; // 色違い確率(15%)
   let tier = shiny ? "full" : (roll < 0.30 ? "sparse" : roll < 0.60 ? "core" : "full");
   let sparseVariant = null;
   if(tier === "sparse") sparseVariant = rng() < 0.5 ? "head" : "headbody";
@@ -1138,7 +1175,7 @@ function buildMonsterFromOriginalRow(barcode, row){
   }
   const grid = buildColorGridFromDotData(dotData);
   const shinyRng = mulberry32(hashCode(barcode + "_orig_shiny"));
-  const shiny = shinyRng() < 0.10;
+  const shiny = shinyRng() < 0.15; // 色違い確率(15%)
   const rarity = shiny ? RARITY[5] : rarityFor(core.total);
   return {
     id: barcode,
@@ -1407,9 +1444,10 @@ async function renderCollection(){
     el.style.setProperty("--rc", m.rarityColor);
     el.innerHTML = `
       <div class="mini-delete" title="削除">✕</div>
+      <div class="mini-elem-badge" style="--ec:${m.color}">${m.element}</div>
       <div class="mini-pixel"><canvas class="pixel-grid" id="mg-${m.id}"></canvas></div>
       <div class="name">${m.name}</div>
-      <div class="elem">${m.element} ・ PWR ${m.total}</div>
+      <div class="elem">PWR ${m.total}</div>
       <div class="mini-rarity">${m.rarityLabel}</div>
     `;
     grid.appendChild(el);
@@ -1428,7 +1466,7 @@ async function renderCollection(){
 function populateFighterSelects(){
   const f1 = document.getElementById("fighter1");
   const f2 = document.getElementById("fighter2");
-  const opts = collection.map(m=>`<option value="${m.id}">${m.name}（PWR${m.total}）</option>`).join("");
+  const opts = collection.map(m=>`<option value="${m.id}">${m.element}：${m.name}（${m.total}）</option>`).join("");
   const placeholder = `<option value="">選択してください</option>`;
   f1.innerHTML = placeholder + opts;
   f2.innerHTML = placeholder + opts;

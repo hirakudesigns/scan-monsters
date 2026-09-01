@@ -18,10 +18,12 @@
   --text:#E8ECF4;
   --muted:#8792B0;
 }
+html{background:var(--bg);overscroll-behavior-y:none;}
 *{box-sizing:border-box;}
 body{
   margin:0;
   min-height:100vh;
+  overscroll-behavior-y:none;
   background:
     radial-gradient(circle at 15% 0%, rgba(57,255,136,0.06), transparent 40%),
     radial-gradient(circle at 85% 100%, rgba(255,61,129,0.07), transparent 45%),
@@ -30,7 +32,7 @@ body{
   font-family:'JetBrains Mono', monospace;
   padding:20px 14px 60px;
 }
-.wrap{max-width:480px;margin:0 auto;}
+.wrap{max-width:480px;margin:0 auto;padding-bottom:78px;}
 
 /* header */
 h1{
@@ -52,19 +54,38 @@ h1{
 }
 
 /* tabs */
-.tabs{display:flex;gap:6px;margin-bottom:16px;}
+.tabs{
+  display:flex;
+  gap:8px;
+  align-items:flex-end;
+  position:fixed;
+  left:0;right:0;bottom:0;
+  z-index:50;
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, rgba(11,15,26,0), var(--bg) 30%);
+  max-width:480px;
+  margin:0 auto;
+}
 .tab{
   flex:1;
-  padding:10px 4px;
+  padding:14px 4px;
   text-align:center;
   background:var(--panel);
   border:1px solid var(--line);
   color:var(--muted);
-  font-size:11px;
+  font-size:12px;
+  font-weight:700;
   letter-spacing:1px;
   cursor:pointer;
-  border-radius:6px;
+  border-radius:10px;
   transition:.15s;
+}
+.tab.tab-secondary{
+  flex:0.55;
+  padding:10px 2px;
+  font-size:10px;
+  font-weight:400;
+  align-self:center;
 }
 .tab.active{
   background:var(--panel2);
@@ -87,9 +108,9 @@ h1{
   background:#050810;
   border:1px solid var(--line);
   border-radius:6px;
-  padding:14px;
-  margin-bottom:12px;
-  min-height:44px;
+  padding:10px 12px;
+  margin-bottom:8px;
+  min-height:40px;
   display:flex;
   align-items:center;
   gap:10px;
@@ -134,25 +155,45 @@ button:active{transform:scale(.97);}
   font-weight:700;
 }
 .btn-ghost{flex:1;color:var(--muted);}
-.msg{font-size:11px;color:var(--magenta);min-height:16px;margin-top:8px;letter-spacing:.5px;}
+.icon-btn{
+  flex-shrink:0;
+  width:34px;height:34px;
+  padding:0;
+  border-radius:50%;
+  background:var(--panel2);
+  color:var(--green);
+  font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+}
+.msg{font-size:10.5px;color:var(--magenta);min-height:14px;margin-top:5px;letter-spacing:.5px;}
 
 /* card */
-.card-stage{perspective:900px;margin-top:16px;}
+.card-stage{perspective:1100px;margin-top:8px;}
+.card-flip{
+  position:relative;
+  display:grid;
+  transform-style:preserve-3d;
+  transition:transform .8s cubic-bezier(.2,.8,.2,1);
+  animation:revealPop .4s cubic-bezier(.2,.9,.3,1.2);
+}
+.card-flip.flipped{transform:rotateY(180deg);}
+@keyframes revealPop{from{opacity:0;transform:scale(.85);}to{opacity:1;transform:scale(1);}}
+.card-face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.card-back{transform:rotateY(0deg);}
+.card-front{transform:rotateY(180deg);}
 .card{
   border-radius:14px;
-  padding:16px;
+  padding:12px;
   position:relative;
   overflow:hidden;
   border:6px solid var(--rc,var(--line));
   background:linear-gradient(160deg, var(--panel2), #0c1122 70%);
-  animation:reveal .5s cubic-bezier(.2,.9,.3,1.2);
   box-shadow:0 0 0 rgba(0,0,0,0);
 }
 .card.ss{
   border-image:linear-gradient(120deg,#ff5a3c,#ffd93c,#4cd97b,#3ca7ff,#9b5cff,#ff6fd8) 1;
-  animation:reveal .5s cubic-bezier(.2,.9,.3,1.2), rainbow 4s linear infinite;
+  animation:rainbow 4s linear infinite;
 }
-@keyframes reveal{from{opacity:0;transform:scale(.85) rotateX(12deg);}to{opacity:1;transform:scale(1) rotateX(0);}}
 @keyframes rainbow{
   0%{box-shadow:0 0 16px #ff5a3c55;}
   20%{box-shadow:0 0 16px #ffd93c55;}
@@ -161,7 +202,87 @@ button:active{transform:scale(.97);}
   80%{box-shadow:0 0 16px #9b5cff55;}
   100%{box-shadow:0 0 16px #ff5a3c55;}
 }
-.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.card-back{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:260px;
+}
+.card-back-mark{
+  font-family:'Press Start 2P',monospace;
+  font-size:16px;
+  color:var(--green);
+  text-shadow:0 0 14px rgba(57,255,136,0.5);
+  text-align:center;
+  letter-spacing:1px;
+}
+.card-back-bars{display:flex;gap:2px;height:22px;margin-top:14px;justify-content:center;}
+.card-back-bars span{width:2px;background:var(--green);opacity:.7;}
+
+/* ホロ加工風の光沢 */
+.holo-sweep{
+  position:absolute;inset:0;
+  background:linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.18) 35%, rgba(255,255,255,0.35) 42%, rgba(255,255,255,0.18) 48%, transparent 65%);
+  background-size:250% 250%;
+  animation:holoSweep 3.2s ease-in-out infinite;
+  pointer-events:none;
+  mix-blend-mode:overlay;
+  z-index:6;
+}
+@keyframes holoSweep{
+  0%{background-position:0% 0%;}
+  50%{background-position:100% 100%;}
+  100%{background-position:0% 0%;}
+}
+.holo-pointer{
+  position:absolute;inset:0;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.4), transparent 45%);
+  pointer-events:none;
+  mix-blend-mode:overlay;
+  z-index:6;
+  opacity:0;
+  transition:opacity .2s ease;
+}
+.card-front:hover .holo-pointer, .card-front.holo-active .holo-pointer{opacity:1;}
+
+/* スキャンライン */
+.scanlines{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 3px);
+  pointer-events:none;
+  opacity:.5;
+  animation:scanDrift 6s linear infinite;
+  z-index:5;
+}
+@keyframes scanDrift{
+  0%{background-position:0 0;}
+  100%{background-position:0 40px;}
+}
+
+/* 属性アンビエントパーティクル */
+.ambient-layer{
+  position:absolute;inset:0;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:1;
+}
+.ambient-particle{
+  position:absolute;
+  bottom:-10px;
+  border-radius:50%;
+  animation-name:ambientFloat;
+  animation-timing-function:ease-in-out;
+  animation-iteration-count:infinite;
+}
+@keyframes ambientFloat{
+  0%{transform:translate(0,0);opacity:0;}
+  10%{opacity:.85;}
+  90%{opacity:.6;}
+  100%{transform:translate(var(--dx,10px),-320px);opacity:0;}
+}
+
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;position:relative;z-index:7;}
+.card-content{position:relative;z-index:7;}
 .elem-badge{
   width:48px;height:48px;
   border-radius:50%;
@@ -175,11 +296,11 @@ button:active{transform:scale(.97);}
   flex-shrink:0;
 }
 .card-name-big{
-  font-size:19px;
+  font-size:16px;
   font-weight:700;
   letter-spacing:.5px;
   text-align:center;
-  margin:6px 0 10px;
+  margin:4px 0 6px;
 }
 .rarity-badge{
   font-size:10px;
@@ -192,29 +313,29 @@ button:active{transform:scale(.97);}
   height:fit-content;
 }
 .pixel-frame{
-  display:flex;justify-content:center;margin:10px 0 8px;
+  display:flex;justify-content:center;margin:4px 0 6px;
 }
 .card-power{
   text-align:center;
-  font-size:10px;
+  font-size:9px;
   color:var(--muted);
   letter-spacing:2px;
-  margin:10px 0 4px;
+  margin:4px 0 2px;
 }
 .power-val{
   display:block;
   font-family:'Press Start 2P',monospace;
-  font-size:22px;
+  font-size:17px;
   color:var(--amber);
   text-shadow:0 0 12px rgba(255,194,71,0.6);
-  margin-top:4px;
+  margin-top:2px;
 }
 .parts-line{
   text-align:center;
-  font-size:9.5px;
+  font-size:9px;
   color:var(--muted);
   letter-spacing:.5px;
-  margin-bottom:12px;
+  margin-bottom:6px;
 }
 .pixel-grid{
   display:block;
@@ -222,7 +343,7 @@ button:active{transform:scale(.97);}
 }
 .pixel-frame .pixel-grid{
   background:#050810;
-  padding:8px;
+  padding:5px;
   border-radius:8px;
   border:1px solid var(--line);
 }
@@ -233,18 +354,18 @@ button:active{transform:scale(.97);}
   border:1px solid var(--line);
 }
 
-.stat-row{display:flex;align-items:center;gap:8px;font-size:10px;margin-bottom:6px;}
+.stat-row{display:flex;align-items:center;gap:8px;font-size:9.5px;margin-bottom:3px;}
 .stat-label{width:32px;color:var(--muted);}
-.stat-bar{flex:1;height:7px;background:#050810;border-radius:4px;overflow:hidden;}
+.stat-bar{flex:1;height:6px;background:#050810;border-radius:4px;overflow:hidden;}
 .stat-fill{height:100%;border-radius:4px;transition:width .5s ease;box-shadow:0 0 6px 0 currentColor;}
-.stat-val{width:24px;text-align:right;color:var(--text);}
+.stat-val{width:22px;text-align:right;color:var(--text);}
 
 .card-footer{
-  margin-top:14px;
-  padding-top:10px;
+  margin-top:6px;
+  padding-top:6px;
   border-top:1px dashed var(--line);
   display:flex;justify-content:center;align-items:center;
-  font-size:10px;color:var(--muted);letter-spacing:1px;
+  font-size:9px;color:var(--muted);letter-spacing:1px;
 }
 
 /* collection */
@@ -613,12 +734,8 @@ select{
   <div class="title-tap">タップしてスタート</div>
 </div>
 <div class="wrap" id="mainApp" style="display:none;">
-  <h1>バーコード<br>モンスター</h1>
-  <div class="sub">// SCAN . COLLECT . BATTLE //</div>
-
   <div class="tabs">
     <div class="tab active" data-tab="scan">スキャン</div>
-    <div class="tab" data-tab="collection">図鑑</div>
     <div class="tab" data-tab="battle">バトル</div>
   </div>
 
@@ -627,10 +744,11 @@ select{
     <div class="scan-display">
       <div class="bars" id="barsPreview"></div>
       <input id="barcodeInput" placeholder="バーコード番号を入力" inputmode="numeric" maxlength="16">
+      <button class="icon-btn" id="randomBtn" title="ランダム">🔄</button>
     </div>
     <div class="btn-row">
       <button class="btn-primary" id="scanBtn">▶ スキャン実行</button>
-      <button class="btn-ghost" id="randomBtn">🎲 ランダム</button>
+      <button class="btn-ghost" id="gotoCollectionBtn">📖 図鑑</button>
     </div>
     <div class="msg" id="scanMsg"></div>
     <div class="card-stage" id="cardStage"></div>
@@ -1114,35 +1232,111 @@ function renderColorGrid(canvas, grid, targetWidth){
   canvas._cgMeta = { grid, cellSize };
 }
 
-const CARD_TARGET_W = 168;
+const CARD_TARGET_W = 128;
 const MINI_TARGET_W = 64;
 const ARENA_TARGET_W = 120;
+
+const AMBIENT_COUNT_BY_RARITY = { D:4, C:5, B:8, A:9, S:12, SS:16 };
+
+function spawnAmbientParticles(container, color, count){
+  container.innerHTML = "";
+  for(let i=0;i<count;i++){
+    const p = document.createElement("div");
+    p.className = "ambient-particle";
+    const size = 3 + Math.random()*4;
+    p.style.width = size+"px";
+    p.style.height = size+"px";
+    p.style.left = (Math.random()*100)+"%";
+    p.style.background = color;
+    p.style.boxShadow = `0 0 ${size*2}px ${color}`;
+    p.style.setProperty("--dx", (Math.random()*40-20)+"px");
+    p.style.animationDuration = (3 + Math.random()*3)+"s";
+    p.style.animationDelay = (Math.random()*4)+"s";
+    container.appendChild(p);
+  }
+}
 
 function renderCard(m){
   const stage = document.getElementById("cardStage");
   stage.innerHTML = "";
-  const card = document.createElement("div");
-  card.className = "card" + (m.rarityKey === "SS" ? " ss" : "");
-  card.style.setProperty("--rc", m.rarityColor);
 
-  card.innerHTML = `
-    <div class="card-top">
-      <div class="elem-badge" style="--ec:${m.color}">${m.element}</div>
-      <div class="rarity-badge">${m.rarityLabel}</div>
-    </div>
-    <div class="card-name-big">${m.name}</div>
-    <div class="pixel-frame"><canvas class="pixel-grid" id="pg-${m.id}"></canvas></div>
-    <div class="card-power">PWR<span class="power-val">${m.total}</span></div>
-    <div class="stats"></div>
-    <div class="parts-line">${[m.original && "✅ 作成者確定", m.parts.usingReal && "実素材", m.parts.shiny && "✨色違い", m.parts.tierLabel].filter(Boolean).join(" ・ ")}</div>
-    <div class="card-footer">
-      <span>${m.barcode}</span>
+  const flip = document.createElement("div");
+  flip.className = "card-flip";
+
+  const back = document.createElement("div");
+  back.className = "card-face card-back card";
+  back.innerHTML = `
+    <div>
+      <div class="card-back-mark">SCAN!</div>
+      <div class="card-back-bars" id="backBars"></div>
     </div>
   `;
-  stage.appendChild(card);
-  renderColorGrid(card.querySelector(`#pg-${m.id}`), m.grid, CARD_TARGET_W);
 
-  const statsEl = card.querySelector(".stats");
+  const front = document.createElement("div");
+  front.className = "card-face card-front card" + (m.rarityKey === "SS" ? " ss" : "");
+  front.style.setProperty("--rc", m.rarityColor);
+  front.innerHTML = `
+    <div class="ambient-layer" id="ambientLayer"></div>
+    <div class="scanlines"></div>
+    <div class="holo-sweep"></div>
+    <div class="holo-pointer"></div>
+    <div class="card-content">
+      <div class="card-top">
+        <div class="elem-badge" style="--ec:${m.color}">${m.element}</div>
+        <div class="rarity-badge">${m.rarityLabel}</div>
+      </div>
+      <div class="card-name-big">${m.name}</div>
+      <div class="pixel-frame"><canvas class="pixel-grid" id="pg-${m.id}"></canvas></div>
+      <div class="card-power">PWR<span class="power-val">${m.total}</span></div>
+      <div class="stats"></div>
+      <div class="parts-line">${[m.original && "✅ 作成者確定", m.parts.usingReal && "実素材", m.parts.shiny && "✨色違い", m.parts.tierLabel].filter(Boolean).join(" ・ ")}</div>
+      <div class="card-footer">
+        <span>${m.barcode}</span>
+      </div>
+    </div>
+  `;
+
+  flip.appendChild(back);
+  flip.appendChild(front);
+  stage.appendChild(flip);
+
+  // 裏面のバーコード風バー
+  const backBars = back.querySelector("#backBars");
+  for(let i=0;i<12;i++){
+    const s = document.createElement("span");
+    s.style.height = (8 + Math.random()*14) + "px";
+    backBars.appendChild(s);
+  }
+
+  renderColorGrid(front.querySelector(`#pg-${m.id}`), m.grid, CARD_TARGET_W);
+  spawnAmbientParticles(front.querySelector("#ambientLayer"), m.color, AMBIENT_COUNT_BY_RARITY[m.rarityKey] || 4);
+
+  // ホロの光沢をポインター位置に追従させる
+  const updateHolo = (clientX, clientY)=>{
+    const rect = front.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    front.style.setProperty("--mx", x + "%");
+    front.style.setProperty("--my", y + "%");
+  };
+  front.addEventListener("pointermove", (e)=>{
+    front.classList.add("holo-active");
+    updateHolo(e.clientX, e.clientY);
+  });
+  front.addEventListener("pointerleave", ()=> front.classList.remove("holo-active"));
+  front.addEventListener("touchmove", (e)=>{
+    if(e.touches[0]){
+      front.classList.add("holo-active");
+      updateHolo(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive:true });
+
+  // カードめくり演出
+  requestAnimationFrame(()=>{
+    setTimeout(()=> flip.classList.add("flipped"), 200);
+  });
+
+  const statsEl = front.querySelector(".stats");
   [["HP",m.hp,"#4CD97B"],["攻撃",m.atk,"#FF5A3C"],["防御",m.def,"#3CA7FF"],["素早",m.spd,"#FFD93C"]]
     .forEach(([label,val,color])=>{
       const row = document.createElement("div");
@@ -1646,6 +1840,9 @@ document.getElementById("randomBtn").addEventListener("click", ()=>{
   document.getElementById("barcodeInput").value = rnd;
   renderBars(rnd);
   doScan(rnd);
+});
+document.getElementById("gotoCollectionBtn").addEventListener("click", ()=>{
+  switchTab("collection");
 });
 document.getElementById("battleBtn").addEventListener("click", ()=>{
   const idA = document.getElementById("fighter1").value;
